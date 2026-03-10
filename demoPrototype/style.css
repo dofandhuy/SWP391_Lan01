@@ -1,0 +1,145 @@
+/* Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+}
+
+body {
+  background: #fdfdfd;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.container {
+  width: 900px;
+  display: flex;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  background: #fff;
+}
+
+/* Left side */
+.left {
+  position: relative;
+  width: 50%;
+}
+
+.left img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlay-text {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  color: #fff;
+}
+
+.overlay-text h2 {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.overlay-text p {
+  font-size: 14px;
+  opacity: 0.8;
+}
+
+/* Right side */
+.right {
+  width: 50%;
+  padding: 40px;
+}
+
+.right h3 {
+  margin-bottom: 20px;
+}
+
+.btn-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.btn-group button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 20px;
+  background: #e0f2f1;
+  cursor: pointer;
+}
+
+.btn-group .active {
+  background: #26a69a;
+  color: #fff;
+}
+
+.desc {
+  font-size: 14px;
+  color: #777;
+  margin-bottom: 20px;
+}
+
+form label {
+  font-size: 14px;
+  margin: 10px 0 5px;
+  display: block;
+}
+
+form input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  outline: none;
+  margin-bottom: 10px;
+}
+
+.password-box {
+  position: relative;
+}
+
+.password-box input {
+  width: 100%;
+  padding-right: 30px;
+}
+
+.password-box .toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0 20px;
+  font-size: 14px;
+}
+
+.options a {
+  color: #26a69a;
+  text-decoration: none;
+}
+
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 25px;
+  background: #26a69a;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+}

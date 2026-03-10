@@ -1,0 +1,351 @@
+/* =========================================
+   DATABASE: ELMS (E-Learning Management System)
+   Version: Full Completed Build
+   ========================================= */
+CREATE DATABASE ELMS;
+GO
+USE ELMS;
+GO
+
+/* 1. Roles */
+CREATE TABLE dbo.Roles (
+    RoleID INT IDENTITY(1,1) PRIMARY KEY,
+    RoleName NVARCHAR(50) NOT NULL UNIQUE
+);
+GO
+INSERT INTO dbo.Roles (RoleName)
+VALUES ('Admin'), ('Instructor'), ('Student'), ('Parent');
+GO
+
+
+/* 2. Users */
+CREATE TABLE dbo.Users (
+    UserID INT IDENTITY(1,1) PRIMARY KEY,
+    Username NVARCHAR(100) NOT NULL UNIQUE,
+    PasswordHash NVARCHAR(255) NOT NULL,
+    Email NVARCHAR(100) UNIQUE,
+    FullName NVARCHAR(150),
+    Avatar NVARCHAR(255),
+    Phone NVARCHAR(20),
+    Sex NVARCHAR(10),
+    Address NVARCHAR(255),
+    DOB DATE,
+    RoleID INT NOT NULL,
+    Status BIT DEFAULT 1,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Users_Role FOREIGN KEY (RoleID) REFERENCES dbo.Roles(RoleID)
+);
+GO
+
+/* 3. TokenForgetPassword */
+CREATE TABLE dbo.TokenForgetPassword (
+    TokenID INT IDENTITY(1,1) PRIMARY KEY,
+    Token VARCHAR(255) NOT NULL,
+    ExpiryTime DATETIME NOT NULL,
+    IsUsed BIT NOT NULL DEFAULT 0,
+    UserID INT NOT NULL,
+    CreatedAt DATETIME DEFAULT GETDATE(),
+    CONSTRAINT FK_Token_User FOREIGN KEY (UserID) REFERENCES dbo.Users(UserID)
+);
+GO
+
+/* 4. Category */
+CREATE TABLE dbo.Category (
+    CategoryID INT IDENTITY(1,1) PRIMARY KEY,
+    CategoryName NVARCHAR(100) NOT NULL UNIQUE
+);
+GO
+
+/* 5. Courses */
+CREATE TABLE dbo.Courses (
+    CourseID INT IDENTITY(1,1) PRIMARY KEY,
+    InstructorID INT NOT NULL,
+    CategoryID INT NULL,  -- 🔹 Liên kết đến Category
+    Title NVARCHAR(200) NOT NULL,
+    Description NVARCHAR(MAX),
+    Thumbnail NVARCHAR(255),
+    Price DECIMAL(10,2) DEFAULT 0, -- 🔹 Thêm cột giá
+    Status NVARCHAR(30) DEFAULT 'Draft'
+        CHECK (Status IN ('Draft','Pending','Active','Inactive','Rejected')),
+    CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
+    ApprovedBy INT NULL,
+    ApprovedAt DATETIME2 NULL,
+    RejectionReason NVARCHAR(500),
+    CONSTRAINT FK_Courses_Instructor FOREIGN KEY (InstructorID) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_Courses_ApprovedBy FOREIGN KEY (ApprovedBy) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_Courses_Category FOREIGN KEY (CategoryID) REFERENCES dbo.Category(CategoryID)
+);
+GO
+/* 6. Modules */
+CREATE TABLE dbo.Modules (
+    ModuleID INT IDENTITY(1,1) PRIMARY KEY,
+    CourseID INT NOT NULL,
+    Title NVARCHAR(200) NOT NULL,
+    Description NVARCHAR(MAX),
+    OrderIndex INT NOT NULL,
+    CONSTRAINT FK_Modules_Course FOREIGN KEY (CourseID) REFERENCES dbo.Courses(CourseID)
+);
+GO
+
+
+
+/* 7.Lessons */
+CREATE TABLE dbo.Lessons (
+    LessonID INT IDENTITY(1,1) PRIMARY KEY,
+    ModuleID INT NOT NULL,
+    Title NVARCHAR(200) NOT NULL,
+    Content NVARCHAR(MAX),
+    OrderIndex INT NOT NULL,
+    LessonType NVARCHAR(50),
+    CONSTRAINT FK_Lessons_Module FOREIGN KEY (ModuleID) REFERENCES dbo.Modules(ModuleID)
+);
+GO
+
+/* 8.Quizzes */
+CREATE TABLE dbo.Quizzes (
+    QuizID INT IDENTITY(1,1) PRIMARY KEY,
+    ModuleID INT NOT NULL,              -- 🔹 Liên kết đến Module
+    LessonID INT NULL,                  -- 🔹 Liên kết đến Lesson (nếu quiz nằm trong một lesson cụ thể)
+    CategoryID INT NULL,
+    Title NVARCHAR(200),
+    NumQuestions INT,
+    IsRandom BIT DEFAULT 0,
+    DurationMinutes INT,
+    PassingScore DECIMAL(5,2),
+    PointPerQuestion DECIMAL(5,2),
+    DifficultyLevel NVARCHAR(20)
+        CHECK (DifficultyLevel IN ('Easy','Medium','Hard')),
+    CreatedBy INT,
+    CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
+    Status NVARCHAR(20) DEFAULT 'Draft'
+        CHECK (Status IN ('Draft','Pending','Approved','Rejected')),
+    ReviewedBy INT,
+    ReviewedAt DATETIME2,
+    RejectionReason NVARCHAR(500),
+    MaxAttempts INT,
+    AttemptCooldownHours INT,
+    CONSTRAINT FK_Quizzes_Module FOREIGN KEY (ModuleID) REFERENCES dbo.Modules(ModuleID),
+    CONSTRAINT FK_Quizzes_Lesson FOREIGN KEY (LessonID) REFERENCES dbo.Lessons(LessonID),
+    CONSTRAINT FK_Quizzes_User FOREIGN KEY (CreatedBy) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_Quizzes_ReviewedBy FOREIGN KEY (ReviewedBy) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_Quizzes_Category FOREIGN KEY (CategoryID) REFERENCES dbo.Category(CategoryID)
+);
+GO
+
+
+
+/* 9. QuizRules */
+CREATE TABLE dbo.QuizRules (
+    QuizID INT PRIMARY KEY,
+    NumQuestions INT NOT NULL CHECK (NumQuestions > 0),
+    DifficultyMix NVARCHAR(MAX),
+    Category NVARCHAR(100),
+    CONSTRAINT FK_QuizRules_Quiz FOREIGN KEY (QuizID) REFERENCES dbo.Quizzes(QuizID)
+);
+GO
+
+/* 10. QuestionBank */
+CREATE TABLE dbo.QuestionBank (
+    QuestionID INT IDENTITY(1,1) PRIMARY KEY,
+    QuestionText NVARCHAR(MAX) NOT NULL,
+    QuestionType NVARCHAR(20) CHECK (QuestionType IN ('MCQ','TrueFalse','FillBlank')),
+    DifficultyLevel NVARCHAR(20) CHECK (DifficultyLevel IN ('Easy','Medium','Hard')),
+    CategoryID INT NULL,
+    CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
+    CreatedBy INT NOT NULL,
+    UpdatedBy INT NULL,
+    UpdatedAt DATETIME2 NULL,
+    Status NVARCHAR(20) DEFAULT 'Draft'
+        CHECK (Status IN ('Draft','Pending','Approved','Rejected')),
+    ReviewedBy INT NULL,
+    ReviewedAt DATETIME2 NULL,
+    RejectionReason NVARCHAR(500),
+    CONSTRAINT FK_QuestionBank_Category FOREIGN KEY (CategoryID) REFERENCES dbo.Category(CategoryID),
+    CONSTRAINT FK_QuestionBank_CreatedBy FOREIGN KEY (CreatedBy) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_QuestionBank_UpdatedBy FOREIGN KEY (UpdatedBy) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_QuestionBank_ReviewedBy FOREIGN KEY (ReviewedBy) REFERENCES dbo.Users(UserID)
+);
+GO
+
+/* 11. AnswerOptions */
+CREATE TABLE dbo.AnswerOptions (
+    AnswerID INT IDENTITY(1,1) PRIMARY KEY,
+    QuestionID INT NOT NULL,
+    AnswerText NVARCHAR(MAX) NOT NULL,
+    IsCorrect BIT DEFAULT 0,
+    CONSTRAINT FK_AnswerOptions_Question FOREIGN KEY (QuestionID) REFERENCES dbo.QuestionBank(QuestionID)
+);
+GO
+
+/* 12. QuizQuestions */
+CREATE TABLE dbo.QuizQuestions (
+    QuizID INT NOT NULL,
+    QuestionID INT NOT NULL,
+    OrderIndex INT,
+    PRIMARY KEY (QuizID, QuestionID),
+    CONSTRAINT FK_QQ_Quiz FOREIGN KEY (QuizID) REFERENCES dbo.Quizzes(QuizID),
+    CONSTRAINT FK_QQ_Question FOREIGN KEY (QuestionID) REFERENCES dbo.QuestionBank(QuestionID)
+);
+GO
+
+/* 13. Enrollments */
+CREATE TABLE dbo.Enrollments (
+    EnrollmentID INT IDENTITY(1,1) PRIMARY KEY,
+    StudentID INT NOT NULL,
+    CourseID INT NOT NULL,
+    EnrollDate DATETIME2 DEFAULT SYSUTCDATETIME(),
+    Deadline DATE NOT NULL,
+    Status NVARCHAR(20) DEFAULT 'Enrolled'
+        CHECK (Status IN ('Enrolled','Completed','Dropped')),
+    CONSTRAINT FK_Enrollments_Student FOREIGN KEY (StudentID) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_Enrollments_Course FOREIGN KEY (CourseID) REFERENCES dbo.Courses(CourseID)
+);
+GO
+
+/* 14. StudentProgress */
+CREATE TABLE dbo.StudentProgress (
+    ProgressID INT IDENTITY(1,1) PRIMARY KEY,
+    EnrollmentID INT NOT NULL,
+    LessonID INT NOT NULL,
+    IsCompleted BIT DEFAULT 0,
+    CompletedAt DATETIME2 NULL,
+    CONSTRAINT FK_Progress_Enroll FOREIGN KEY (EnrollmentID) REFERENCES dbo.Enrollments(EnrollmentID),
+    CONSTRAINT FK_Progress_Lesson FOREIGN KEY (LessonID) REFERENCES dbo.Lessons(LessonID)
+);
+GO
+
+/* 15. QuizAttempts */
+CREATE TABLE dbo.QuizAttempts (
+    AttemptID INT IDENTITY(1,1) PRIMARY KEY,
+    StudentID INT NOT NULL,
+    QuizID INT NOT NULL,
+    AttemptDate DATETIME2 DEFAULT SYSUTCDATETIME(),
+    Score DECIMAL(5,2),
+    DurationSeconds INT,
+    CONSTRAINT FK_QuizAttempts_Student FOREIGN KEY (StudentID) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_QuizAttempts_Quiz FOREIGN KEY (QuizID) REFERENCES dbo.Quizzes(QuizID)
+);
+GO
+
+/* 16. QuizAttemptQuestions */
+CREATE TABLE dbo.QuizAttemptQuestions (
+    AttemptID INT NOT NULL,
+    QuestionID INT NOT NULL,
+    StudentAnswer NVARCHAR(MAX),
+    IsCorrect BIT,
+    PRIMARY KEY (AttemptID, QuestionID),
+    CONSTRAINT FK_QAQ_Attempt FOREIGN KEY (AttemptID) REFERENCES dbo.QuizAttempts(AttemptID),
+    CONSTRAINT FK_QAQ_Question FOREIGN KEY (QuestionID) REFERENCES dbo.QuestionBank(QuestionID)
+);
+GO
+
+/* 17. Relationships */
+CREATE TABLE dbo.Relationships (
+    RelationshipID INT IDENTITY(1,1) PRIMARY KEY,
+    RelationshipName NVARCHAR(50) NOT NULL UNIQUE
+);
+GO
+
+INSERT INTO dbo.Relationships (RelationshipName)
+VALUES ('Parent'), ('Guardian'), ('Grandparent'), ('Other');
+GO
+
+/* 18. ParentStudentLink */
+CREATE TABLE dbo.ParentStudentLink (
+    LinkID INT IDENTITY(1,1) PRIMARY KEY,
+    ParentID INT NOT NULL,
+    StudentID INT NOT NULL,
+    RelationshipID INT NOT NULL,
+    Note NVARCHAR(500),
+    LinkDate DATETIME2 DEFAULT SYSUTCDATETIME(),
+    Status NVARCHAR(20) DEFAULT 'Pending'
+        CHECK (Status IN ('Pending','Active','Inactive','Rejected')),
+    CONSTRAINT FK_PSL_Parent FOREIGN KEY (ParentID) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_PSL_Student FOREIGN KEY (StudentID) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_PSL_Rel FOREIGN KEY (RelationshipID) REFERENCES dbo.Relationships(RelationshipID),
+    CONSTRAINT UQ_PSL UNIQUE (ParentID, StudentID)
+);
+GO
+
+/* 19. AdminOTP */
+CREATE TABLE dbo.AdminOTP (
+    OtpID INT IDENTITY(1,1) PRIMARY KEY,
+    Email VARCHAR(255) NOT NULL,
+    OtpCode VARCHAR(10) NOT NULL,
+    ExpiryTime DATETIME NOT NULL,
+    IsUsed BIT DEFAULT 0,
+    CreatedAt DATETIME DEFAULT GETDATE()
+);
+GO
+
+/* 20. CourseCart */
+CREATE TABLE dbo.CourseCart (
+    CartID INT IDENTITY(1,1) PRIMARY KEY,
+    StudentID INT NOT NULL,
+    CourseID INT NOT NULL,
+    Status NVARCHAR(30) DEFAULT 'InCart'
+        CHECK (Status IN ('InCart','Purchased','Removed')),
+    CreatedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
+    CONSTRAINT FK_Cart_Student FOREIGN KEY (StudentID) REFERENCES dbo.Users(UserID) ON DELETE CASCADE,
+    CONSTRAINT FK_Cart_Course FOREIGN KEY (CourseID) REFERENCES dbo.Courses(CourseID) ON DELETE CASCADE,
+    CONSTRAINT UQ_Cart UNIQUE (StudentID, CourseID)
+);
+GO
+
+/* 21. PaymentRequest */
+CREATE TABLE dbo.PaymentRequest (
+    RequestID INT IDENTITY(1,1) PRIMARY KEY,
+    StudentID INT NOT NULL,
+    ParentID INT NOT NULL,
+    CourseID INT NOT NULL,
+    Status NVARCHAR(20) DEFAULT 'Pending'
+        CHECK (Status IN ('Pending','Approved','Rejected','Completed')),
+    RequestedAt DATETIME2 DEFAULT SYSUTCDATETIME(),
+    ApprovedAt DATETIME2 NULL,
+    CONSTRAINT FK_Payment_Student FOREIGN KEY (StudentID) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_Payment_Parent FOREIGN KEY (ParentID) REFERENCES dbo.Users(UserID),
+    CONSTRAINT FK_Payment_Course FOREIGN KEY (CourseID) REFERENCES dbo.Courses(CourseID)
+);
+
+/* 22. LessonDocument */
+CREATE TABLE LessonDocuments (
+    DocumentID INT PRIMARY KEY IDENTITY(1,1),
+    LessonID INT FOREIGN KEY REFERENCES Lessons(LessonID),
+    FileName NVARCHAR(255),
+    FilePath NVARCHAR(500),
+    UploadedAt DATETIME DEFAULT GETDATE()
+);
+/* =========================================
+  /* 23. LessonVideo */
+   (Support both uploaded files and external URLs)
+   ========================================= */
+CREATE TABLE dbo.LessonVideos (
+    VideoID INT IDENTITY(1,1) PRIMARY KEY,
+    LessonID INT NOT NULL,
+    VideoTitle NVARCHAR(255) NOT NULL,
+    -- Nếu là video upload từ máy tính
+    FileName NVARCHAR(255) NULL,
+    FilePath NVARCHAR(500) NULL,  -- lưu đường dẫn file trong server
+    -- Nếu là video nhúng (YouTube, Vimeo, v.v.)
+    VideoUrl NVARCHAR(500) NULL,  -- lưu URL trực tuyến
+    VideoType NVARCHAR(20) NOT NULL DEFAULT 'Local'
+        CHECK (VideoType IN ('Local', 'External')), -- Local = upload, External = URL
+    FileSizeMB DECIMAL(10,2) NULL,
+    VideoFormat NVARCHAR(50) NULL, -- mp4, mov, mkv...
+    UploadedAt DATETIME DEFAULT GETDATE(),
+    -- đảm bảo ít nhất một trong hai trường có dữ liệu (FilePath hoặc VideoUrl)
+    CONSTRAINT FK_LessonVideos_Lesson FOREIGN KEY (LessonID) REFERENCES dbo.Lessons(LessonID),
+    CONSTRAINT CK_LessonVideos_FileOrUrl CHECK (
+        (FilePath IS NOT NULL AND LTRIM(RTRIM(FilePath)) <> '')
+        OR (VideoUrl IS NOT NULL AND LTRIM(RTRIM(VideoUrl)) <> '')
+    )
+);
+
+GO
+ALTER TABLE dbo.QuestionBank
+ADD ModuleID INT NULL,
+    LessonID INT NULL;
+
+ALTER TABLE dbo.QuestionBank
+ADD CONSTRAINT FK_QuestionBank_Module FOREIGN KEY (ModuleID) REFERENCES dbo.Modules(ModuleID),
+    CONSTRAINT FK_QuestionBank_Lesson FOREIGN KEY (LessonID) REFERENCES dbo.Lessons(LessonID);
