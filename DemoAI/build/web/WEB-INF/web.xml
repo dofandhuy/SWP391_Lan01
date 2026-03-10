@@ -3,7 +3,7 @@
     
      <context-param>
         <param-name>GEMINI_API_KEY</param-name>
-        <param-value>AIzaSyBGxtEo2yLmuksdgEcm7z6pQ3383lJzudY</param-value>
+        <param-value>Nhập Key vào đây</param-value>
     </context-param>
 
     <context-param>
